@@ -26,7 +26,7 @@ function login() {
                 logedin = true;
                 document.querySelector(".login-form").style.display = "none";
                 document.querySelector("main").style.display = "flex";
-                document.querySelector(".background").style.display = "none";
+                // document.querySelector(".background").style.display = "none";
                 load_chat();
             } else {
                 alert("Access Denied: Invalid Secret Key");
