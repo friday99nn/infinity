@@ -31,6 +31,7 @@ main {
     flex-direction: column;
     flex-grow: 1;
     height: calc(100% - 50px);
+    background-colo: transparent;
 }
 
 .chat {
