@@ -1,76 +1,152 @@
-let logedin = false;
-let currentUser = "";
-const API_BASE = "https://friday99nn.pythonanywhere.com/infinity";
+let login = false;
+let username = "";
+
 
 function start_loading() {
-    document.querySelector(".loading").style.display = "inline-block";
+    let loading = document.querySelector(".loading");
+    let main = document.querySelector("main");
+    let startup = document.querySelector(".startup");
+
+    loading.style.display = "inline-block";
+    main.style.filter = "blur(3px)";
+    main.style.pointerEvents = "none";
+    startup.style.filter = "blur(3px)";
+    startup.style.pointerEvents = "none"
 }
 
 function stop_loading() {
-    document.querySelector(".loading").style.display = "none";
+    let loading = document.querySelector(".loading");
+    let main = document.querySelector("main");
+    let startup = document.querySelector(".startup");
+
+    loading.style.display = "none";
+    main.style.filter = "blur(0px)";
+    main.style.pointerEvents = "auto";
+    startup.style.filter = "blur(0px)";
+    startup.style.pointerEvents = "auto"
 }
 
-function login() {
-    let keyInput = document.querySelector("#key");
-    let formData = new FormData();
-    formData.append("key", keyInput.value.trim());
 
+function start() {
+    let key = document.querySelector("#key");
+
+    if (key.value.trim() == "") {
+        key.style.borderBottom = "2px solid red";
+        return false;
+    }
+
+    if (!navigator.onLine) {
+        alert("Please, connect to the imternet.")
+        return false
+    }
+
+    key.style.borderBottom = "1px solid var(--root-color)";
+
+    let DataForm = new FormData()
+    DataForm.append("key", key.value.trim());
     start_loading();
+    let timeout = setTimeout(() => {
+        stop_loading();
+        alert("Poor Network.");
+        return false
+    }, 7000);
 
-    fetch(`${API_BASE}/start`, { method: "POST", body: formData })
-        .then(res => res.json())
+    fetch("https://friday99nn.pythonanywhere.com/infinity/start", {
+        method: "POST",
+        body: DataForm
+    })
+        .then(response => response.json())
         .then(data => {
             stop_loading();
-            if (data.status === "ok") {
-                currentUser = data.user;
-                logedin = true;
-                document.querySelector(".login-form").style.display = "none";
-                document.querySelector("main").style.display = "flex";
-                // document.querySelector(".background").style.display = "none";
-                load_chat();
-            } else {
-                alert("Access Denied: Invalid Secret Key");
+            clearTimeout(timeout);
+
+            if (data.status == "invalid") {
+                key.style.borderBottom = "2px solid red";
+                alert("invalid user key.");
+                return;
             }
+
+            username = data["username"];
+            login = true;
+            document.querySelector(".startup").style.display = "none";
+            document.querySelector("main").style.display = "flex";
+            return;
         })
-        .catch(() => {
-            stop_loading();
-            alert("Server connection failed.");
-        });
+        .catch(error => alert(error));
 }
 
-function load_chat() {
-    fetch(`${API_BASE}/load`, { method: "POST" })
+
+function load_message(data) {
+    let chat = document.querySelector(".chat");
+
+    let div = document.createElement("div");
+    let h5 = document.createElement("h5");
+    let p = document.createElement("p");
+    let small = document.createElement("small");
+
+    h5.innerText = data.username;
+    p.innerText = data.message;
+    small.innerText = data.time;
+
+    div.appendChild(h5);
+    div.appendChild(p);
+    div.appendChild(small);
+
+    if (data.username === username){
+        div.style.alignSelf = "flex-end";
+    }
+
+    chat.appendChild(div);
+}
+
+
+function send_message() {
+    let message = document.querySelector("#message").value.trim();
+    if (message == "") { return };
+    let time = `[ ${new Date().toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()} ]`;
+    load_message({
+        "username": username,
+        "message": message,
+        "time": time
+    })
+
+    console.log(typeof(time));
+    document.querySelector("#message").value = "";
+
+    let DataForm = new FormData()
+    DataForm.append("username", username);
+    DataForm.append("message", message);
+    DataForm.append("time", time);
+
+    fetch("https://friday99nn.pythonanywhere.com/infinity/save_message", {
+        method: "POST",
+        body: DataForm
+    })
         .then(res => res.json())
         .then(data => {
-            const chatBox = document.querySelector(".chat");
-            chatBox.innerHTML = "";
-            data.forEach(msg => {
-                const msgDiv = document.createElement("div");
-                msgDiv.className = "msg-bubble";
-                // Style differently if message is from "me"
-                if (msg.user === currentUser) msgDiv.style.alignSelf = "flex-end";
+            console.log(data);
+        })
+        .catch(error => console.log(error));
 
-                msgDiv.innerHTML = `<small>${msg.user}</small><p>${msg.message}</p>`;
-                chatBox.appendChild(msgDiv);
-            });
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
 }
 
-function sendMessage() {
-    let input = document.querySelector("#message");
-    if (input.value.trim() === "") return;
 
-    let formData = new FormData();
-    formData.append("message", input.value);
-    formData.append("user", currentUser);
-
-    fetch(`${API_BASE}/send`, { method: "POST", body: formData })
-        .then(() => {
-            input.value = "";
-            load_chat();
-        });
-}
-
-// Check for new messages every 2 seconds
-setInterval(() => { if (logedin) load_chat(); }, 2000);
+setInterval(() => {
+    if (login) {
+        let DataForm = new FormData();
+        DataForm.append("username", username);
+        fetch("https://friday99nn.pythonanywhere.com/infinity/load_chat", {
+            method: "POST",
+            body: DataForm
+        })
+            .then(res => res.json())
+            .then(data => {
+                let divs = document.querySelectorAll(".chat div");
+                divs.forEach(div=> div.remove());
+                data.forEach(chat => {
+                    load_message(chat);
+                });
+            })
+            .catch(error => console.log(error));
+    }
+}, 3000);
