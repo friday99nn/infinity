@@ -38,7 +38,6 @@ header img{
 
 header h3{
     color: white;
-    margin-left: 80px;
 }
 
 main{
@@ -102,6 +101,7 @@ main{
 .message{
     position: absolute;
     width: 100%;
+    height: 44px;
     bottom: 0;
     left: 0;
     display: flex;
@@ -114,6 +114,7 @@ main{
     flex-grow: 1;
     border: none;
     padding-left: 1rem;
+    height: 100%;
 }
 
 .message input:focus{
