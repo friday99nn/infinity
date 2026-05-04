@@ -1,31 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infinity App</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-    <header><h3>PROJECT INFINITY</h3><h5>I love you for infinity</h5></header>
-    <img src="infinity.png" class="background">
-
-    <div class="login-form">
-        <h3>Welcome</h3>
-        <input type="password" placeholder="Enter Secret Key" id="key" style="width:100%; padding:10px; margin:10px 0;">
-        <button onclick="login()" style="width:100%; padding:10px; background:#cf7617; color:white; border:none; border-radius:5px;">Login</button>
-    </div>
-
+    <header>
+        <img src="infinity.png" alt="">
+        <h3>infinit</h3>
+    </header>
     <main>
-        <div class="chat"></div>
+        <h5 class="background"></h5>
+        <div class="chat">
+        </div>
         <div class="message">
-            <input type="text" placeholder="Message..." id="message">
-            <button onclick="sendMessage()">Send</button>
+            <input type="text" placeholder="Type Message..." id="message">
+            <button onclick="send_message();">send</button>
         </div>
     </main>
-
-    <div class="loading"><h1>⏳</h1><p>Syncing...</p></div>
-
+    <div class="startup">
+        <img src="infinity.png" alt="">
+        <h3>welcome</h3>
+        <h6>Enter your authentication key:</h6>
+        <input type="text" placeholder="authentication key" id="key">
+        <button onclick="start();">start</button>
+    </div>
+    <div class="loading">
+        <h1>💍</h1>
+        <p>processing...</p>
+    </div>
     <script src="script.js"></script>
 </body>
+
 </html>
