@@ -79,6 +79,7 @@ main{
     margin: 8px;
     box-shadow: 2px 0 5px var(--root-color);
     display: flex;
+    margin-bottom: 0;
     flex-direction: column;
 }
 
