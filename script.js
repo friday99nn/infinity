@@ -17,7 +17,7 @@ function login() {
 
     start_loading();
 
-    fetch(`${API_BASE}/login`, { method: "POST", body: formData })
+    fetch(`${API_BASE}/start`, { method: "POST", body: formData })
         .then(res => res.json())
         .then(data => {
             stop_loading();
