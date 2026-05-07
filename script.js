@@ -1,27 +1,35 @@
-// =============================================
-// CONFIG
-// =============================================
-const API = "https://friday99nn.pythonanywhere.com/infinity";
-const POLL_INTERVAL = 3000; // ms
+// ─────────────────────────────────────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const API           = "https://friday99nn.pythonanywhere.com/infinity";
+const POLL_INTERVAL = 3000;
 
-// =============================================
-// STATE
-// =============================================
-let login       = false;
-let username    = "";
-let otherName   = "";
-let lastMsgCount = 0;
-let selectedImage = null; // base64 string
+// ─────────────────────────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────────────────────────
+let login         = false;
+let username      = "";
+let otherName     = "";
+let lastMsgCount  = 0;
+let selectedFile  = null;   // the actual File object chosen by user
+let selectedThumb = null;   // local object URL for preview (not sent to server)
+let sending       = false;  // prevent double-sends
 
-// =============================================
-// HELPERS
-// =============================================
-function showLoading()  { document.getElementById("loadingOverlay").classList.add("show"); }
-function hideLoading()  { document.getElementById("loadingOverlay").classList.remove("show"); }
+// ─────────────────────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const showLoading = () => $("loadingOverlay").classList.add("show");
+const hideLoading = () => $("loadingOverlay").classList.remove("show");
 
-function scrollToBottom(smooth = true) {
-    const area = document.getElementById("chatArea");
-    area.scrollTo({ top: area.scrollHeight, behavior: smooth ? "smooth" : "instant" });
+function scrollToBottom(instant = false) {
+    const area = $("chatArea");
+    area.scrollTo({ top: area.scrollHeight, behavior: instant ? "instant" : "smooth" });
+}
+
+function isAtBottom() {
+    const area = $("chatArea");
+    return area.scrollHeight - area.scrollTop - area.clientHeight < 100;
 }
 
 function formatTime() {
@@ -31,35 +39,32 @@ function formatTime() {
     }).toUpperCase().replace(",", "");
 }
 
-// =============================================
-// LOGIN
-// =============================================
+// Build a full URL from a relative server path  /infinity/images/abc.jpg
+function imageUrl(path) {
+    if (!path) return "";
+    if (path.startsWith("http") || path.startsWith("data:")) return path;
+    return "https://friday99nn.pythonanywhere.com" + path;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LOGIN
+// ─────────────────────────────────────────────────────────────────────────────
 function start() {
-    const keyEl  = document.getElementById("key");
-    const errEl  = document.getElementById("keyError");
-    const key    = keyEl.value.trim();
+    const keyEl = $("key");
+    const errEl = $("keyError");
+    const key   = keyEl.value.trim();
 
     keyEl.classList.remove("error");
     errEl.classList.remove("show");
 
-    if (!key) {
-        keyEl.classList.add("error");
-        return;
-    }
-    if (!navigator.onLine) {
-        alert("No internet connection.");
-        return;
-    }
+    if (!key) { keyEl.classList.add("error"); return; }
+    if (!navigator.onLine) { alert("No internet connection."); return; }
 
     const fd = new FormData();
     fd.append("key", key);
-
     showLoading();
 
-    const timeout = setTimeout(() => {
-        hideLoading();
-        alert("Request timed out. Check your connection.");
-    }, 8000);
+    const timeout = setTimeout(() => { hideLoading(); alert("Request timed out."); }, 9000);
 
     fetch(`${API}/start`, { method: "POST", body: fd })
         .then(r => r.json())
@@ -77,45 +82,36 @@ function start() {
             otherName = data.other;
             login     = true;
 
-            // Set header info
-            document.getElementById("otherName").textContent    = otherName;
-            document.getElementById("otherInitial").textContent = otherName.charAt(0).toUpperCase();
+            $("otherName").textContent    = otherName;
+            $("otherInitial").textContent = otherName.charAt(0).toUpperCase();
 
-            // Switch screens
-            document.getElementById("startup").style.display = "none";
-            const app = document.getElementById("app");
-            app.style.display = "flex";
+            $("startup").style.display = "none";
+            $("app").style.display     = "flex";
 
-            // Load chat immediately
-            loadChat(false);
+            loadChat(true);   // first load
         })
-        .catch(err => {
-            clearTimeout(timeout);
-            hideLoading();
-            console.error(err);
-        });
+        .catch(err => { clearTimeout(timeout); hideLoading(); console.error(err); });
 }
 
-// Allow pressing Enter on key input
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("key").addEventListener("keydown", e => {
-        if (e.key === "Enter") start();
-    });
+    $("key").addEventListener("keydown", e => { if (e.key === "Enter") start(); });
+    $("message").addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
 });
 
-// =============================================
-// RENDER A SINGLE MESSAGE
-// =============================================
+// ─────────────────────────────────────────────────────────────────────────────
+//  RENDER ONE MESSAGE BUBBLE
+// ─────────────────────────────────────────────────────────────────────────────
 function renderMessage(data) {
     const isMe = (data.username === username);
-    const wrapper = document.createElement("div");
-    wrapper.className = `msg-wrapper ${isMe ? "me" : "other"}`;
-    wrapper.dataset.id = data.id || "";
 
-    // Show name only for "other"
+    const wrapper = document.createElement("div");
+    wrapper.className  = `msg-wrapper ${isMe ? "me" : "other"}`;
+    wrapper.dataset.id = String(data.id || "");
+
+    // Sender name (only for the other person)
     if (!isMe) {
         const name = document.createElement("div");
-        name.className = "msg-name";
+        name.className   = "msg-name";
         name.textContent = data.username;
         wrapper.appendChild(name);
     }
@@ -123,28 +119,51 @@ function renderMessage(data) {
     const bubble = document.createElement("div");
     bubble.className = "bubble";
 
-    // IMAGE
+    // ── image ──────────────────────────────────────────────────────────────
     if (data.image) {
+        const src = imageUrl(data.image);
+
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "chat-img-wrap";
+
+        // Skeleton placeholder while loading
+        const skeleton = document.createElement("div");
+        skeleton.className = "img-skeleton";
+        imgWrap.appendChild(skeleton);
+
         const img = document.createElement("img");
         img.className = "chat-img";
-        img.src = data.image;
-        img.alt = "image";
-        img.loading = "lazy";
-        img.onclick = () => openLightbox(data.image);
-        bubble.appendChild(img);
+        img.alt       = "📷 photo";
+
+        img.onload = () => {
+            skeleton.remove();
+            img.style.display = "block";
+        };
+        img.onerror = () => {
+            skeleton.textContent = "⚠️ Image failed to load";
+            skeleton.style.color = "#f87171";
+            skeleton.style.padding = "0.5rem";
+        };
+
+        img.style.display = "none";
+        img.src = src;
+        img.onclick = () => openLightbox(src);
+
+        imgWrap.appendChild(img);
+        bubble.appendChild(imgWrap);
     }
 
-    // TEXT
+    // ── text ───────────────────────────────────────────────────────────────
     if (data.message && data.message.trim()) {
         const p = document.createElement("div");
-        p.className = "msg-text";
+        p.className   = "msg-text";
         p.textContent = data.message;
         bubble.appendChild(p);
     }
 
-    // TIME
+    // ── time + tick ────────────────────────────────────────────────────────
     const timeEl = document.createElement("div");
-    timeEl.className = "msg-time";
+    timeEl.className   = "msg-time";
     timeEl.textContent = data.time;
     bubble.appendChild(timeEl);
 
@@ -152,10 +171,10 @@ function renderMessage(data) {
     return wrapper;
 }
 
-// =============================================
-// LOAD CHAT (POLLING)
-// =============================================
-function loadChat(smooth = true) {
+// ─────────────────────────────────────────────────────────────────────────────
+//  POLLING  –  fetch new messages every 3 s
+// ─────────────────────────────────────────────────────────────────────────────
+function loadChat(instant = false) {
     if (!login) return;
 
     const fd = new FormData();
@@ -164,151 +183,210 @@ function loadChat(smooth = true) {
     fetch(`${API}/load_chat`, { method: "POST", body: fd })
         .then(r => r.json())
         .then(messages => {
-            if (messages.length === lastMsgCount) return; // nothing new
+            if (messages.length === lastMsgCount) return;
 
-            const container = document.getElementById("messages");
-            const wasAtBottom = isAtBottom();
+            const container  = $("messages");
+            const atBottom   = isAtBottom();
 
-            // Only add new messages (avoid full re-render = no flicker)
+            // Collect IDs already rendered (including optimistic tmp_ ones)
             const existingIds = new Set(
                 [...container.querySelectorAll(".msg-wrapper")].map(el => el.dataset.id)
             );
 
             let added = 0;
             messages.forEach(msg => {
-                if (msg.id && existingIds.has(String(msg.id))) return;
+                const sid = String(msg.id);
+                if (existingIds.has(sid)) return;
+
+                // Replace optimistic bubble if server confirmed same sequence
+                // (find last tmp_ bubble from same user that has no real id yet)
+                const tmpBubbles = [...container.querySelectorAll(`.msg-wrapper[data-id^="tmp_"]`)];
+                const match = tmpBubbles.find(el =>
+                    el.querySelector(".msg-name, .msg-text") &&
+                    msg.username === username &&
+                    el.dataset.id.startsWith("tmp_")
+                );
+                if (match) {
+                    match.dataset.id = sid;  // adopt the real id
+                    existingIds.add(sid);
+                    return;
+                }
+
                 container.appendChild(renderMessage(msg));
                 added++;
             });
 
             lastMsgCount = messages.length;
 
-            if (added > 0 && (wasAtBottom || messages[messages.length - 1]?.username === username)) {
-                scrollToBottom(smooth);
+            if (added > 0 && (atBottom || messages.at(-1)?.username === username)) {
+                scrollToBottom(instant);
             }
         })
         .catch(err => console.error("Poll error:", err));
 }
 
-function isAtBottom() {
-    const area = document.getElementById("chatArea");
-    return area.scrollHeight - area.scrollTop - area.clientHeight < 80;
-}
+setInterval(() => loadChat(), POLL_INTERVAL);
 
-// Poll every 3 seconds
-setInterval(() => loadChat(true), POLL_INTERVAL);
+// ─────────────────────────────────────────────────────────────────────────────
+//  SEND MESSAGE  –  text and/or image
+// ─────────────────────────────────────────────────────────────────────────────
+async function sendMessage() {
+    if (sending) return;
 
-// =============================================
-// SEND MESSAGE
-// =============================================
-function sendMessage() {
-    const msgEl = document.getElementById("message");
+    const msgEl   = $("message");
     const message = msgEl.value.trim();
 
-    if (!message && !selectedImage) return;
+    if (!message && !selectedFile) return;
 
-    const time = formatTime();
+    sending = true;
+    setSendBtnState(true);
 
-    // Optimistically render
+    const time   = formatTime();
     const tempId = "tmp_" + Date.now();
-    const tempMsg = {
-        id: tempId,
+
+    // ── Optimistic render (show immediately with local thumb) ───────────────
+    const tempData = {
+        id:       tempId,
         username,
         message,
-        image: selectedImage,
-        time
+        image:    selectedThumb || "",  // local blob URL for instant preview
+        time,
     };
-    const el = renderMessage(tempMsg);
-    document.getElementById("messages").appendChild(el);
-    scrollToBottom(true);
+    const el = renderMessage(tempData);
+    $("messages").appendChild(el);
+    scrollToBottom();
 
-    // Clear inputs
+    // Snapshot then clear UI immediately
+    const fileToSend  = selectedFile;
+    const thumbToSend = selectedThumb;
     msgEl.value = "";
     clearImagePreview();
 
+    // ── Build FormData ───────────────────────────────────────────────────────
     const fd = new FormData();
     fd.append("username", username);
-    fd.append("message", message);
-    fd.append("time", time);
-    if (selectedImage) {
-        fd.append("image", selectedImage);
+    fd.append("message",  message);
+    fd.append("time",     time);
+
+    if (fileToSend) {
+        // Compress image before sending
+        try {
+            const compressed = await compressToBlob(fileToSend, 900, 0.75);
+            fd.append("image_file", compressed, "photo.jpg");
+        } catch (e) {
+            // fallback: send original
+            fd.append("image_file", fileToSend, fileToSend.name);
+        }
     }
 
+    // ── Upload ───────────────────────────────────────────────────────────────
     fetch(`${API}/save_message`, { method: "POST", body: fd })
         .then(r => r.json())
         .then(data => {
-            // Update temp element's id so dedup works
-            if (data.id) {
-                el.dataset.id = String(data.id);
+            // Update temp bubble with real id so poll dedup works
+            el.dataset.id = String(data.id || tempId);
+
+            // Replace local blob src with server URL
+            if (data.image_url) {
+                const chatImg = el.querySelector(".chat-img");
+                if (chatImg) {
+                    const realSrc = imageUrl(data.image_url);
+                    if (thumbToSend) URL.revokeObjectURL(thumbToSend);
+                    chatImg.src = realSrc;
+                }
             }
-            lastMsgCount++; // so poll won't re-render same message
+
+            lastMsgCount++;
         })
-        .catch(err => console.error("Send error:", err));
+        .catch(err => {
+            console.error("Send error:", err);
+            el.style.opacity = "0.5";   // mark failed message visually
+        })
+        .finally(() => {
+            sending = false;
+            setSendBtnState(false);
+        });
 }
 
-// =============================================
-// IMAGE HANDLING
-// =============================================
+function setSendBtnState(disabled) {
+    const btn = $("sendBtn");
+    btn.disabled = disabled;
+    btn.style.opacity = disabled ? "0.5" : "1";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  IMAGE SELECTION & COMPRESSION
+// ─────────────────────────────────────────────────────────────────────────────
 function handleImageSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
-    if (file.size > MAX_SIZE) {
-        alert("Image is too large. Please choose an image under 2MB.");
+    if (!file.type.startsWith("image/")) {
+        alert("Please select an image file.");
+        event.target.value = "";
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = e => {
-        selectedImage = e.target.result; // base64 data URL
+    // 10 MB hard limit
+    if (file.size > 10 * 1024 * 1024) {
+        alert("Image too large (max 10 MB). Please choose a smaller image.");
+        event.target.value = "";
+        return;
+    }
 
-        // Compress if needed
-        compressImage(selectedImage, 800, 0.7, compressed => {
-            selectedImage = compressed;
-            document.getElementById("previewImg").src = compressed;
-            document.getElementById("imagePreview").classList.add("show");
-        });
-    };
-    reader.readAsDataURL(file);
+    selectedFile  = file;
+    selectedThumb = URL.createObjectURL(file);
 
-    // Reset input so same file can be selected again
-    event.target.value = "";
+    $("previewImg").src = selectedThumb;
+    $("imagePreview").classList.add("show");
+
+    event.target.value = "";   // allow same file again
 }
 
-function compressImage(src, maxDim, quality, callback) {
-    const img = new Image();
-    img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-            if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
-            else                { width  = Math.round(width  * maxDim / height); height = maxDim; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-        callback(canvas.toDataURL("image/jpeg", quality));
-    };
-    img.src = src;
+// Returns a compressed Blob (JPEG)
+function compressToBlob(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = e => {
+            const img = new Image();
+            img.onerror = reject;
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                    if (width >= height) { height = Math.round(height * maxDim / width); width = maxDim; }
+                    else                 { width  = Math.round(width  * maxDim / height); height = maxDim; }
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width  = width;
+                canvas.height = height;
+                canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+                canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Compression failed")),
+                              "image/jpeg", quality);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 function clearImagePreview() {
-    selectedImage = null;
-    document.getElementById("previewImg").src = "";
-    document.getElementById("imagePreview").classList.remove("show");
+    if (selectedThumb) { URL.revokeObjectURL(selectedThumb); selectedThumb = null; }
+    selectedFile = null;
+    $("previewImg").src = "";
+    $("imagePreview").classList.remove("show");
 }
 
-// =============================================
-// LIGHTBOX
-// =============================================
+// ─────────────────────────────────────────────────────────────────────────────
+//  LIGHTBOX
+// ─────────────────────────────────────────────────────────────────────────────
 function openLightbox(src) {
-    document.getElementById("lightboxImg").src = src;
-    document.getElementById("lightbox").classList.add("open");
+    $("lightboxImg").src = src;
+    $("lightbox").classList.add("open");
+    document.body.style.overflow = "hidden";
 }
 function closeLightbox() {
-    document.getElementById("lightbox").classList.remove("open");
+    $("lightbox").classList.remove("open");
+    document.body.style.overflow = "";
 }
-// Close lightbox with Escape
-document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeLightbox();
-});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLightbox(); });
