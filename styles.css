@@ -26,12 +26,21 @@
     -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html {
     height: 100%;
+}
+body {
+    /* --vh is set by JS to fix Android Chrome 100vh bug */
+    height: 100%;
+    height: calc(var(--vh, 1vh) * 100);
     overflow: hidden;
     font-family: var(--font);
     background: var(--bg);
     color: var(--text);
+    /* position:fixed stops iOS rubber-band scroll hiding the input bar */
+    position: fixed;
+    width: 100%;
+    top: 0; left: 0;
 }
 
 /* ===== STARTUP SCREEN ===== */
@@ -187,9 +196,12 @@ html, body {
 .app {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
-    height: 100vh;
+    /* fill the real visible viewport, not the browser-chrome-including 100vh */
+    height: 100%;
+    height: calc(var(--vh, 1vh) * 100);
+    width: 100%;
     overflow: hidden;
+    position: relative;
 }
 
 /* ===== HEADER ===== */
