@@ -1,4 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
+//  MOBILE VIEWPORT FIX
+//  Android Chrome's 100vh includes the browser address bar, hiding the input.
+//  We measure the real visible height and push it into --vh so CSS uses it.
+// ─────────────────────────────────────────────────────────────────────────────
+function setVh() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+setVh();
+window.addEventListener('resize', setVh);
+// Also fire on orientationchange (landscape/portrait switch)
+window.addEventListener('orientationchange', () => setTimeout(setVh, 200));
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  CONFIG
 // ─────────────────────────────────────────────────────────────────────────────
 const API           = "https://friday99nn.pythonanywhere.com/infinity";
