@@ -1,4 +1,3 @@
-```javascript
 const API = "https://friday99nn.pythonanywhere.com/infinity";
 
 const socket = io("https://friday99nn.pythonanywhere.com");
