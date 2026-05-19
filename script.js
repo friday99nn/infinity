@@ -1,3 +1,4 @@
+
 const API = "https://friday99nn.pythonanywhere.com/infinity";
 
 const socket = io("https://friday99nn.pythonanywhere.com");
@@ -11,39 +12,47 @@ let audioChunks = [];
 let peerConnection;
 let localStream;
 
-function formatTime() {
+// =========================
+// HELPERS
+// =========================
 
+function formatTime() {
     return new Date().toLocaleString();
 }
 
-function imageUrl(path) {
-
+function fileUrl(path) {
     return "https://friday99nn.pythonanywhere.com" + path;
 }
 
 function scrollBottom() {
-
     const area = document.getElementById("chatArea");
-
     area.scrollTop = area.scrollHeight;
 }
 
+// =========================
+// LOGIN
+// =========================
+
 function start() {
 
-    const key = document.getElementById("key").value;
+    const key =
+    document.getElementById("key").value.trim();
+
+    if (!key) {
+        alert("Enter key");
+        return;
+    }
 
     const fd = new FormData();
 
     fd.append("key", key);
 
     fetch(`${API}/start`, {
-
         method: "POST",
         body: fd
-
     })
 
-    .then(r => r.json())
+    .then(res => res.json())
 
     .then(data => {
 
@@ -57,17 +66,29 @@ function start() {
         username = data.username;
         otherName = data.other;
 
-        document.getElementById("otherName").innerText = otherName;
+        document.getElementById("otherName").innerText =
+        otherName;
 
-        document.getElementById("startup").style.display = "none";
+        document.getElementById("startup").style.display =
+        "none";
 
-        document.getElementById("app").style.display = "flex";
+        document.getElementById("app").style.display =
+        "flex";
 
         loadChat();
 
         setInterval(loadChat, 2000);
+    })
+
+    .catch(err => {
+        console.log(err);
+        alert("Server error");
     });
 }
+
+// =========================
+// RENDER MESSAGE
+// =========================
 
 function renderMessage(data) {
 
@@ -85,9 +106,10 @@ function renderMessage(data) {
     // IMAGE
     if (data.image) {
 
-        const img = document.createElement("img");
+        const img =
+        document.createElement("img");
 
-        img.src = imageUrl(data.image);
+        img.src = fileUrl(data.image);
 
         img.className = "chat-img";
 
@@ -97,11 +119,12 @@ function renderMessage(data) {
     // AUDIO
     if (data.audio) {
 
-        const audio = document.createElement("audio");
+        const audio =
+        document.createElement("audio");
 
         audio.controls = true;
 
-        audio.src = imageUrl(data.audio);
+        audio.src = fileUrl(data.audio);
 
         bubble.appendChild(audio);
     }
@@ -109,11 +132,12 @@ function renderMessage(data) {
     // VIDEO
     if (data.video) {
 
-        const video = document.createElement("video");
+        const video =
+        document.createElement("video");
 
         video.controls = true;
 
-        video.src = imageUrl(data.video);
+        video.src = fileUrl(data.video);
 
         video.style.width = "100%";
 
@@ -123,7 +147,10 @@ function renderMessage(data) {
     // TEXT
     if (data.message) {
 
-        const text = document.createElement("div");
+        const text =
+        document.createElement("div");
+
+        text.className = "msg-text";
 
         text.innerText = data.message;
 
@@ -131,7 +158,8 @@ function renderMessage(data) {
     }
 
     // TIME
-    const time = document.createElement("div");
+    const time =
+    document.createElement("div");
 
     time.className = "msg-time";
 
@@ -144,15 +172,17 @@ function renderMessage(data) {
     return wrap;
 }
 
+// =========================
+// LOAD CHAT
+// =========================
+
 function loadChat() {
 
     fetch(`${API}/load_chat`, {
-
         method: "POST"
-
     })
 
-    .then(r => r.json())
+    .then(res => res.json())
 
     .then(messages => {
 
@@ -172,9 +202,13 @@ function loadChat() {
     });
 }
 
+// =========================
+// SEND MESSAGE
+// =========================
+
 async function sendMessage() {
 
-    const text =
+    const message =
     document.getElementById("message").value;
 
     const image =
@@ -187,7 +221,7 @@ async function sendMessage() {
 
     fd.append("username", username);
 
-    fd.append("message", text);
+    fd.append("message", message);
 
     fd.append("time", formatTime());
 
@@ -200,7 +234,6 @@ async function sendMessage() {
     }
 
     await fetch(`${API}/save_message`, {
-
         method: "POST",
         body: fd
     });
@@ -213,6 +246,10 @@ async function sendMessage() {
 
     loadChat();
 }
+
+// =========================
+// VOICE RECORDING
+// =========================
 
 async function recordVoice() {
 
@@ -227,7 +264,6 @@ async function recordVoice() {
     audioChunks = [];
 
     mediaRecorder.ondataavailable = e => {
-
         audioChunks.push(e.data);
     };
 
@@ -245,10 +281,13 @@ async function recordVoice() {
 
         fd.append("time", formatTime());
 
-        fd.append("audio_file", blob, "voice.webm");
+        fd.append(
+            "audio_file",
+            blob,
+            "voice.webm"
+        );
 
         await fetch(`${API}/save_message`, {
-
             method: "POST",
             body: fd
         });
@@ -258,65 +297,78 @@ async function recordVoice() {
 
     mediaRecorder.start();
 
-    alert("Recording started for 5 seconds");
+    alert("Recording 5 seconds...");
 
     setTimeout(() => {
 
         mediaRecorder.stop();
 
-        alert("Voice message sent");
-
     }, 5000);
 }
 
+// =========================
+// CALLING
+// =========================
+
 async function startCall() {
 
-    localStream =
-    await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: true
-    });
+    try {
 
-    peerConnection =
-    new RTCPeerConnection();
+        localStream =
+        await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true
+        });
 
-    localStream.getTracks().forEach(track => {
+        peerConnection =
+        new RTCPeerConnection();
 
-        peerConnection.addTrack(
-            track,
-            localStream
+        localStream.getTracks().forEach(track => {
+
+            peerConnection.addTrack(
+                track,
+                localStream
+            );
+        });
+
+        peerConnection.onicecandidate = event => {
+
+            if (event.candidate) {
+
+                socket.emit(
+                    "ice-candidate",
+                    {
+                        candidate: event.candidate
+                    }
+                );
+            }
+        };
+
+        const offer =
+        await peerConnection.createOffer();
+
+        await peerConnection.setLocalDescription(
+            offer
         );
-    });
 
-    peerConnection.onicecandidate = event => {
+        socket.emit("call-user", {
+            offer: offer
+        });
 
-        if (event.candidate) {
+        alert("Calling...");
 
-            socket.emit("ice-candidate", {
+    } catch(err) {
 
-                candidate: event.candidate
-            });
-        }
-    };
+        console.log(err);
 
-    const offer =
-    await peerConnection.createOffer();
-
-    await peerConnection.setLocalDescription(
-        offer
-    );
-
-    socket.emit("call-user", {
-        offer: offer
-    });
-
-    alert("Calling...");
+        alert("Call failed");
+    }
 }
 
 socket.on("incoming-call", async data => {
 
     const accept =
-    confirm("Incoming call. Accept?");
+    confirm("Incoming call");
 
     if (!accept) return;
 
@@ -369,4 +421,32 @@ socket.on("ice-candidate", async data => {
         );
     }
 });
+
+// =========================
+// ENTER KEY SUPPORT
+// =========================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        document
+        .getElementById("message")
+        .addEventListener("keydown", e => {
+
+            if (e.key === "Enter") {
+                sendMessage();
+            }
+        });
+
+        document
+        .getElementById("key")
+        .addEventListener("keydown", e => {
+
+            if (e.key === "Enter") {
+                start();
+            }
+        });
+    }
+);
 ```
