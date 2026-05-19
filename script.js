@@ -1,27 +1,23 @@
+const BASE =
+"https://friday99nn.pythonanywhere.com";
 
-const API = "https://friday99nn.pythonanywhere.com/infinity";
+const API =
+BASE + "/infinity";
 
-const socket = io("https://friday99nn.pythonanywhere.com");
+const socket =
+io(BASE);
 
 let username = "";
 let otherName = "";
 
-let mediaRecorder;
-let audioChunks = [];
-
-let peerConnection;
-let localStream;
-
-// =========================
-// HELPERS
-// =========================
+let loadedIds = new Set();
 
 function formatTime() {
     return new Date().toLocaleString();
 }
 
 function fileUrl(path) {
-    return "https://friday99nn.pythonanywhere.com" + path;
+    return BASE + path;
 }
 
 function scrollBottom() {
@@ -29,17 +25,16 @@ function scrollBottom() {
     const area =
     document.getElementById("chatArea");
 
-    area.scrollTop = area.scrollHeight;
+    area.scrollTop =
+    area.scrollHeight;
 }
 
-// =========================
-// LOGIN
-// =========================
-
-function start() {
+async function start() {
 
     const key =
-    document.getElementById("key").value.trim();
+    document.getElementById("key")
+    .value
+    .trim();
 
     if (!key) {
         alert("Enter key");
@@ -50,14 +45,16 @@ function start() {
 
     fd.append("key", key);
 
-    fetch(`${API}/start`, {
-        method: "POST",
-        body: fd
-    })
+    try {
 
-    .then(res => res.json())
+        const res =
+        await fetch(`${API}/start`, {
+            method: "POST",
+            body: fd
+        });
 
-    .then(data => {
+        const data =
+        await res.json();
 
         if (data.status === "invalid") {
 
@@ -69,31 +66,24 @@ function start() {
         username = data.username;
         otherName = data.other;
 
-        document.getElementById("otherName").innerText =
-        otherName;
+        document.getElementById("otherName")
+        .innerText = otherName;
 
-        document.getElementById("startup").style.display =
-        "none";
+        document.getElementById("startup")
+        .style.display = "none";
 
-        document.getElementById("app").style.display =
-        "flex";
+        document.getElementById("app")
+        .style.display = "flex";
 
         loadChat();
 
-        setInterval(loadChat, 2000);
-    })
-
-    .catch(err => {
+    } catch(err) {
 
         console.log(err);
 
         alert("Server error");
-    });
+    }
 }
-
-// =========================
-// RENDER MESSAGE
-// =========================
 
 function renderMessage(data) {
 
@@ -110,20 +100,20 @@ function renderMessage(data) {
 
     bubble.className = "bubble";
 
-    // IMAGE
     if (data.image) {
 
         const img =
         document.createElement("img");
 
-        img.src = fileUrl(data.image);
+        img.src =
+        fileUrl(data.image);
 
-        img.className = "chat-img";
+        img.className =
+        "chat-img";
 
         bubble.appendChild(img);
     }
 
-    // AUDIO
     if (data.audio) {
 
         const audio =
@@ -131,12 +121,12 @@ function renderMessage(data) {
 
         audio.controls = true;
 
-        audio.src = fileUrl(data.audio);
+        audio.src =
+        fileUrl(data.audio);
 
         bubble.appendChild(audio);
     }
 
-    // VIDEO
     if (data.video) {
 
         const video =
@@ -144,33 +134,34 @@ function renderMessage(data) {
 
         video.controls = true;
 
-        video.src = fileUrl(data.video);
-
-        video.style.width = "100%";
+        video.src =
+        fileUrl(data.video);
 
         bubble.appendChild(video);
     }
 
-    // TEXT
     if (data.message) {
 
         const text =
         document.createElement("div");
 
-        text.className = "msg-text";
+        text.className =
+        "msg-text";
 
-        text.innerText = data.message;
+        text.innerText =
+        data.message;
 
         bubble.appendChild(text);
     }
 
-    // TIME
     const time =
     document.createElement("div");
 
-    time.className = "msg-time";
+    time.className =
+    "msg-time";
 
-    time.innerText = data.time;
+    time.innerText =
+    data.time;
 
     bubble.appendChild(time);
 
@@ -179,50 +170,46 @@ function renderMessage(data) {
     return wrap;
 }
 
-// =========================
-// LOAD CHAT
-// =========================
+async function loadChat() {
 
-function loadChat() {
+    const res =
+    await fetch(`${API}/load_chat`);
 
-    fetch(`${API}/load_chat`, {
-        method: "POST"
-    })
+    const messages =
+    await res.json();
 
-    .then(res => res.json())
+    const container =
+    document.getElementById("messages");
 
-    .then(messages => {
+    container.innerHTML = "";
 
-        const container =
-        document.getElementById("messages");
+    loadedIds.clear();
 
-        container.innerHTML = "";
+    messages.forEach(msg => {
 
-        messages.forEach(msg => {
+        loadedIds.add(msg.id);
 
-            container.appendChild(
-                renderMessage(msg)
-            );
-        });
-
-        scrollBottom();
+        container.appendChild(
+            renderMessage(msg)
+        );
     });
-}
 
-// =========================
-// SEND MESSAGE
-// =========================
+    scrollBottom();
+}
 
 async function sendMessage() {
 
     const message =
-    document.getElementById("message").value;
+    document.getElementById("message")
+    .value;
 
     const image =
-    document.getElementById("imageInput").files[0];
+    document.getElementById("imageInput")
+    .files[0];
 
     const video =
-    document.getElementById("videoInput").files[0];
+    document.getElementById("videoInput")
+    .files[0];
 
     const fd = new FormData();
 
@@ -240,23 +227,50 @@ async function sendMessage() {
         fd.append("video_file", video);
     }
 
-    await fetch(`${API}/save_message`, {
-        method: "POST",
-        body: fd
-    });
+    try {
 
-    document.getElementById("message").value = "";
+        const res =
+        await fetch(`${API}/save_message`, {
+            method: "POST",
+            body: fd
+        });
 
-    document.getElementById("imageInput").value = "";
+        const data =
+        await res.json();
 
-    document.getElementById("videoInput").value = "";
+        if (data.status === "sent") {
 
-    loadChat();
+            appendMessage(data.message);
+
+            document.getElementById("message").value = "";
+
+            document.getElementById("imageInput").value = "";
+
+            document.getElementById("videoInput").value = "";
+        }
+
+    } catch(err) {
+
+        console.log(err);
+    }
 }
 
-// =========================
-// VOICE RECORDING
-// =========================
+function appendMessage(msg) {
+
+    if (loadedIds.has(msg.id)) return;
+
+    loadedIds.add(msg.id);
+
+    document.getElementById("messages")
+    .appendChild(renderMessage(msg));
+
+    scrollBottom();
+}
+
+socket.on("new-message", msg => {
+
+    appendMessage(msg);
+});
 
 async function recordVoice() {
 
@@ -265,23 +279,25 @@ async function recordVoice() {
         audio: true
     });
 
-    mediaRecorder =
+    const recorder =
     new MediaRecorder(stream);
 
-    audioChunks = [];
+    let chunks = [];
 
-    mediaRecorder.ondataavailable = e => {
+    recorder.ondataavailable = e => {
 
-        audioChunks.push(e.data);
+        chunks.push(e.data);
     };
 
-    mediaRecorder.onstop = async () => {
+    recorder.onstop = async () => {
 
-        const blob = new Blob(audioChunks, {
+        const blob =
+        new Blob(chunks, {
             type: "audio/webm"
         });
 
-        const fd = new FormData();
+        const fd =
+        new FormData();
 
         fd.append("username", username);
 
@@ -299,106 +315,95 @@ async function recordVoice() {
             method: "POST",
             body: fd
         });
-
-        loadChat();
     };
 
-    mediaRecorder.start();
+    recorder.start();
 
-    alert("Recording for 5 seconds");
+    alert("Recording 5 seconds");
 
     setTimeout(() => {
 
-        mediaRecorder.stop();
+        recorder.stop();
 
     }, 5000);
 }
 
-// =========================
-// CALLING
-// =========================
+// ======================
+// SIMPLE VIDEO CALL
+// ======================
+
+let peerConnection;
+
+const servers = {
+    iceServers: [
+        {
+            urls: "stun:stun.l.google.com:19302"
+        }
+    ]
+};
 
 async function startCall() {
 
-    try {
+    peerConnection =
+    new RTCPeerConnection(servers);
 
-        localStream =
-        await navigator.mediaDevices.getUserMedia({
-            audio: true,
-            video: true
-        });
+    const stream =
+    await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true
+    });
 
-        peerConnection =
-        new RTCPeerConnection();
+    stream.getTracks().forEach(track => {
 
-        localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, stream);
+    });
 
-            peerConnection.addTrack(
-                track,
-                localStream
+    peerConnection.onicecandidate = event => {
+
+        if (event.candidate) {
+
+            socket.emit(
+                "ice-candidate",
+                event.candidate
             );
-        });
+        }
+    };
 
-        peerConnection.onicecandidate = event => {
+    const offer =
+    await peerConnection.createOffer();
 
-            if (event.candidate) {
+    await peerConnection.setLocalDescription(
+        offer
+    );
 
-                socket.emit(
-                    "ice-candidate",
-                    {
-                        candidate: event.candidate
-                    }
-                );
-            }
-        };
+    socket.emit("call-user", offer);
 
-        const offer =
-        await peerConnection.createOffer();
-
-        await peerConnection.setLocalDescription(
-            offer
-        );
-
-        socket.emit("call-user", {
-            offer: offer
-        });
-
-        alert("Calling...");
-
-    } catch(err) {
-
-        console.log(err);
-
-        alert("Call failed");
-    }
+    alert("Calling...");
 }
 
-socket.on("incoming-call", async data => {
+socket.on("incoming-call", async offer => {
 
     const accept =
     confirm("Incoming call");
 
     if (!accept) return;
 
-    localStream =
+    peerConnection =
+    new RTCPeerConnection(servers);
+
+    const stream =
     await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: true
     });
 
-    peerConnection =
-    new RTCPeerConnection();
+    stream.getTracks().forEach(track => {
 
-    localStream.getTracks().forEach(track => {
-
-        peerConnection.addTrack(
-            track,
-            localStream
-        );
+        peerConnection.addTrack(track, stream);
     });
 
     await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(data.offer)
+        offer
     );
 
     const answer =
@@ -408,31 +413,25 @@ socket.on("incoming-call", async data => {
         answer
     );
 
-    socket.emit("answer-call", {
-        answer: answer
-    });
+    socket.emit("answer-call", answer);
 });
 
-socket.on("call-answered", async data => {
+socket.on("call-answered", async answer => {
 
     await peerConnection.setRemoteDescription(
-        new RTCSessionDescription(data.answer)
+        answer
     );
 });
 
-socket.on("ice-candidate", async data => {
+socket.on("ice-candidate", async candidate => {
 
     if (peerConnection) {
 
         await peerConnection.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
+            candidate
         );
     }
 });
-
-// =========================
-// ENTER KEY SUPPORT
-// =========================
 
 document.addEventListener(
     "DOMContentLoaded",
