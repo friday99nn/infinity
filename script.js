@@ -25,7 +25,10 @@ function fileUrl(path) {
 }
 
 function scrollBottom() {
-    const area = document.getElementById("chatArea");
+
+    const area =
+    document.getElementById("chatArea");
+
     area.scrollTop = area.scrollHeight;
 }
 
@@ -81,7 +84,9 @@ function start() {
     })
 
     .catch(err => {
+
         console.log(err);
+
         alert("Server error");
     });
 }
@@ -92,14 +97,16 @@ function start() {
 
 function renderMessage(data) {
 
-    const wrap = document.createElement("div");
+    const wrap =
+    document.createElement("div");
 
     wrap.className =
     data.username === username
     ? "msg-wrapper me"
     : "msg-wrapper other";
 
-    const bubble = document.createElement("div");
+    const bubble =
+    document.createElement("div");
 
     bubble.className = "bubble";
 
@@ -264,6 +271,7 @@ async function recordVoice() {
     audioChunks = [];
 
     mediaRecorder.ondataavailable = e => {
+
         audioChunks.push(e.data);
     };
 
@@ -297,7 +305,7 @@ async function recordVoice() {
 
     mediaRecorder.start();
 
-    alert("Recording 5 seconds...");
+    alert("Recording for 5 seconds");
 
     setTimeout(() => {
 
@@ -449,4 +457,3 @@ document.addEventListener(
         });
     }
 );
-```
