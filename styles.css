@@ -1,29 +1,42 @@
 /* ===== RESET & ROOT ===== */
 :root {
-    --bg: #dff7ff;
-    --surface: rgba(255, 255, 255, 0.22);
-    --surface2: rgba(255, 255, 255, 0.14);
-    --header-bg: rgba(255, 255, 255, 0.28);
+    /* Background */
+    --bg: #dff8ff;
 
-    --accent: #00c6ff;
-    --accent2: #38bdf8;
+    /* Glass Surfaces */
+    --surface: rgba(255, 255, 255, 0.14);
+    --surface2: rgba(255, 255, 255, 0.10);
+    --header-bg: rgba(255, 255, 255, 0.16);
 
-    --bubble-me: rgba(0, 198, 255, 0.18);
-    --bubble-me-border: rgba(0, 198, 255, 0.35);
+    /* Accent Colors */
+    --accent: #25d0ff;
+    --accent2: #4adeff;
 
-    --bubble-other: rgba(255, 255, 255, 0.18);
-    --bubble-other-border: rgba(255, 255, 255, 0.28);
+    /* Chat Bubbles */
+    --bubble-me: rgba(37, 208, 255, 0.18);
+    --bubble-me-border: rgba(255, 255, 255, 0.22);
 
-    --text: #083344;
-    --text-dim: #4b7285;
-    --text-time: #6b94a8;
+    --bubble-other: rgba(255, 255, 255, 0.12);
+    --bubble-other-border: rgba(255, 255, 255, 0.18);
 
-    --input-bg: rgba(255, 255, 255, 0.18);
-    --border: rgba(255, 255, 255, 0.30);
+    /* Text */
+    --text: #063547;
+    --text-dim: rgba(6, 53, 71, 0.72);
+    --text-time: rgba(6, 53, 71, 0.48);
 
-    --online: #22c55e;
+    /* Input */
+    --input-bg: rgba(255, 255, 255, 0.12);
 
+    /* Borders */
+    --border: rgba(255, 255, 255, 0.20);
+
+    /* Status */
+    --online: #34d399;
+
+    /* Shape */
     --radius-msg: 18px;
+
+    /* Font */
     --font: 'Plus Jakarta Sans', sans-serif;
 }
 
